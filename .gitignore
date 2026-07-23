@@ -1,0 +1,21 @@
+﻿# Secrets
+.env
+infrastructure/.env
+pgpass.conf
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Environnement
+.venv/
+venv/
+
+# Docker
+infrastructure/postgres_data/
+infrastructure/kestra_data/
+
+# OS
+.DS_Store
+Thumbs.db
