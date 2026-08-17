@@ -16,7 +16,7 @@ with engine.begin() as conn:
     nom = emp[2]
 
     conn.execute(text("""
-        INSERT INTO activites_sportives
+        INSERT INTO activites_sportives 
             (id_salarie, date_debut, date_fin, type_sport, distance_m, duree_s, commentaire, source)
         VALUES (:id_salarie, NOW(), NOW() + INTERVAL '3000 seconds',
                 'Course a pied', 10000, 3000, 'Activite de demonstration', 'manuel')
