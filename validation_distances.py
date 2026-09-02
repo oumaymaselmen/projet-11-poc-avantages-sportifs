@@ -1,12 +1,15 @@
-import os
 import requests
 from sqlalchemy import create_engine, text
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '5435')
+
 engine = create_engine(
-    f"postgresql+pg8000://sds_admin:{os.getenv('POSTGRES_PASSWORD')}@sds_postgres:5432/avantages_sportifs"
+    f"postgresql+pg8000://sds_admin:{os.getenv('POSTGRES_PASSWORD')}@{DB_HOST}:{DB_PORT}/avantages_sportifs"
 )
 
 ORS_API_KEY = os.getenv("ORS_API_KEY")
@@ -49,7 +52,6 @@ lon_bureau, lat_bureau = geocoder_adresse(ADRESSE_BUREAU)
 print(f"Bureau geocode : lon={lon_bureau}, lat={lat_bureau}")
 
 with engine.begin() as conn:
-    # Uniquement les salaries pas encore verifies
     employes = conn.execute(text("""
         SELECT id_salarie, nom, prenom, adresse_domicile, moyen_deplacement
         FROM employes
