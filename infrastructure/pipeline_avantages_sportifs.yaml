@@ -1,0 +1,48 @@
+﻿id: pipeline_avantages_sportifs
+namespace: sds.poc
+triggers:
+  - id: schedule_quotidien
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 0 * * *"
+tasks:
+  - id: generate_data
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - cd /app/project && python generate_data.py
+  - id: tests_qualite
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - sleep 2 && cd /app/project && python tests_qualite.py
+  - id: validation_distances
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      DB_HOST: sds_postgres
+      DB_PORT: "5432"
+    commands:
+      - cd /app/project && python validation_distances.py
+  - id: calcul_avantages
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      DB_HOST: sds_postgres
+      DB_PORT: "5432"
+    commands:
+      - cd /app/project && python calcul_avantages.py
+  - id: slack_notifications
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - cd /app/project && python slack_notifications.py
+errors:
+  - id: alerte_echec
+    type: io.kestra.plugin.core.log.Log
+    message: "ERREUR pipeline_avantages_sportifs - Tache en echec !"
+    level: ERROR
