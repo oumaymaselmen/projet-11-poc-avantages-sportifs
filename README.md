@@ -1,48 +1,56 @@
-﻿# 🏃 POC Avantages Sportifs — Sport Data Solution
+# POC Avantages Sportifs - Sport Data Solution
 
-Pipeline de données automatisé pour le suivi des activités sportives des salariés et le calcul de deux avantages RH : une prime salariale de 5% pour les déplacements domicile-bureau à vélo/à pied, et 5 jours de bien-être supplémentaires pour les salariés réalisant au moins 15 activités sportives par an.
+Pipeline de donnees automatise pour le suivi des activites sportives des salaries et le calcul de deux avantages RH : une prime salariale de 5% pour les deplacements domicile-bureau a velo/a pied, et 5 jours de bien-etre supplementaires pour les salaries realisant au moins 15 activites sportives par an.
 
-## 🎯 Contexte
+## Contexte
 
-Ce POC répond à un besoin de Sport Data Solution : automatiser l'attribution d'avantages liés à l'activité sportive des 161 salariés, en croisant des données RH, des données d'activités type Strava, et une validation géographique des trajets déclarés.
+Ce POC repond a un besoin de Sport Data Solution : automatiser l'attribution d'avantages lies a l'activite sportive des 161 salaries, en croisant des donnees RH, des donnees d'activites type Strava, et une validation geographique des trajets declares.
 
-## 🏗️ Architecture
+## Architecture
 
-- **Base de données** : PostgreSQL 15 (via Docker), 4 tables (`employes`, `activites_sportives`, `avantages_calcules`, `distances_domicile_bureau`) + une vue consolidée pour Power BI
-- **Orchestration** : Kestra (flow `pipeline_avantages_sportifs`, déclenchement quotidien par cron)
+- **Base de donnees** : PostgreSQL 15 (via Docker), 4 tables (employes, activites_sportives, avantages_calcules, distances_domicile_bureau) + une vue consolidee pour Power BI
+- **Orchestration** : Kestra (flow pipeline_avantages_sportifs, declenchement quotidien par cron)
 - **ORM** : SQLAlchemy + pilote pg8000
-- **Validation géographique** : API OpenRouteService (géocodage + calcul d'itinéraire)
+- **Validation geographique** : geocodage Nominatim (OpenStreetMap) + calcul de distance Haversine avec coefficient routier
 - **Notifications** : Slack (Incoming Webhook)
 - **Restitution** : Power BI Desktop
 
-## 📂 Scripts
+## Scripts
 
-| Script | Rôle |
+| Script | Role |
 |---|---|
-| `generate_data.py` | Génère ~7000 activités sportives simulées à partir des fichiers RH et Sportif |
-| `tests_qualite.py` | 9 tests automatisés de qualité des données |
-| `validation_distances.py` | Valide le mode de transport déclaré via calcul de distance réelle (OpenRouteService) |
-| `calcul_avantages.py` | Calcule l'éligibilité aux deux avantages |
-| `slack_notifications.py` | Envoie des messages de félicitations sur Slack |
-| `demo_live.py` | Script de démonstration : insère une activité en temps réel pour déclencher le pipeline complet |
+| generate_data.py | Genere ~7000 activites sportives simulees a partir des fichiers RH et Sportif |
+| tests_qualite.py | 9 tests automatises de qualite des donnees |
+| validation_distances.py | Valide le mode de transport declare via calcul de distance domicile-bureau |
+| calcul_avantages.py | Calcule l'eligibilite aux deux avantages (avec verification des distances validees) |
+| slack_notifications.py | Envoie des messages de felicitations sur Slack |
+| demo_live.py | Script de demonstration : insere une activite en temps reel |
 
-## 📊 Résultats
+## Resultats
 
-- **68 salariés éligibles** à la prime sportive — coût total : **172 482 €**
-- **~142-146 salariés éligibles** aux jours de bien-être supplémentaires
+- **59 salaries eligibles** a la prime sportive - cout total : **152 434,50 EUR**
+- **~140-142 salaries eligibles** aux jours de bien-etre supplementaires
+- 9 adresses non geocodables (salaries non eligibles faute de verification possible)
 
-## ⚙️ Installation
+## Choix techniques
+
+- **Distances mises en cache** : les distances domicile-bureau ne sont calculees qu'une fois par salarie et conservees en base, evitant les appels externes redondants a chaque execution du pipeline
+- **Nominatim + Haversine** plutot qu'une API a quota : solution sans limite de requetes, plus robuste pour un usage recurrent
+- **Recalcul complet des avantages** a chaque execution (TRUNCATE + reinsertion), permettant de rejouer l'historique si le taux de prime ou les donnees sources changent
+
+## Installation
 
 ```bash
 git clone https://github.com/oumaymaselmen/projet-11-poc-avantages-sportifs.git
-cd projet-11-poc-avantages-sportifs
-cd infrastructure
+cd projet-11-poc-avantages-sportifs/infrastructure
 docker-compose up -d
 ```
 
-## 🛠️ Stack technique
+Creer un fichier .env a la racine avec : SLACK_WEBHOOK_URL, POSTGRES_PASSWORD, DB_HOST, DB_PORT
 
-`Python` `PostgreSQL` `Docker` `Kestra` `SQLAlchemy` `Power BI` `OpenRouteService API` `Slack API`
+## Stack technique
+
+Python - PostgreSQL - Docker - Kestra - SQLAlchemy - Power BI - Nominatim - Slack API
 
 ---
-*Projet réalisé dans le cadre de la formation Data Engineer — OpenClassrooms*
+*Projet realise dans le cadre de la formation Data Engineer - OpenClassrooms*
