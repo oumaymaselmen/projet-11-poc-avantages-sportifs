@@ -37,7 +37,7 @@ df["sport_pratique"] = df["sport_pratique"].where(pd.notna(df["sport_pratique"])
 print(f"{len(df)} salaries charges")
 
 with engine.begin() as conn:
-    conn.execute(text("TRUNCATE TABLE avantages_calcules, distances_domicile_bureau, activites_sportives, employes RESTART IDENTITY CASCADE"))
+    conn.execute(text("TRUNCATE TABLE avantages_calcules, activites_sportives RESTART IDENTITY"))
     for _, row in df.iterrows():
         conn.execute(text("""
             INSERT INTO employes (id_salarie, nom, prenom, date_naissance, bu, date_embauche,
@@ -120,3 +120,4 @@ with engine.begin() as conn:
 
 print(f"{len(activites)} activites inserees")
 print("Termine !")
+

@@ -1,4 +1,4 @@
-﻿from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 
