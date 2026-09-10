@@ -1,10 +1,21 @@
+import os
 import pandas as pd
 import random
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+# Charge les variables du fichier .env (non versionné, voir .env.example)
+load_dotenv()
+
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5435")
+DB_NAME = os.environ.get("DB_NAME", "avantages_sportifs")
 
 engine = create_engine(
-    "postgresql+pg8000://sds_admin:sportdata@sds_postgres:5432/avantages_sportifs"
+    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 with engine.connect() as conn:
@@ -37,7 +48,7 @@ df["sport_pratique"] = df["sport_pratique"].where(pd.notna(df["sport_pratique"])
 print(f"{len(df)} salaries charges")
 
 with engine.begin() as conn:
-    conn.execute(text("TRUNCATE TABLE avantages_calcules, activites_sportives RESTART IDENTITY"))
+    conn.execute(text("TRUNCATE TABLE avantages_calcules, distances_domicile_bureau, activites_sportives, employes RESTART IDENTITY CASCADE"))
     for _, row in df.iterrows():
         conn.execute(text("""
             INSERT INTO employes (id_salarie, nom, prenom, date_naissance, bu, date_embauche,
@@ -120,4 +131,3 @@ with engine.begin() as conn:
 
 print(f"{len(activites)} activites inserees")
 print("Termine !")
-

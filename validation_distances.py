@@ -1,51 +1,65 @@
+﻿import os
+import time
 import requests
 from sqlalchemy import create_engine, text
-import os
-import time
-import math
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '5435')
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5435")
+DB_NAME = os.environ.get("DB_NAME", "avantages_sportifs")
+GOOGLE_MAPS_API_KEY = os.environ["GOOGLE_MAPS_API_KEY"]
 
 engine = create_engine(
-    f"postgresql+pg8000://sds_admin:{os.getenv('POSTGRES_PASSWORD')}@{DB_HOST}:{DB_PORT}/avantages_sportifs"
+    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 ADRESSE_BUREAU = "1362 Avenue des Platanes, 34970 Lattes, France"
-COEF_ROUTIER = 1.3
 
 DISTANCE_MAX = {
     "Marche/running": 15,
     "Vélo/Trottinette/Autres": 25,
 }
 
-def geocoder_adresse(adresse):
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": adresse, "format": "json", "limit": 1}
-    headers = {"User-Agent": "SportDataSolution-POC/1.0"}
+# Mode de déplacement Google Maps le plus proche pour chaque déclaration
+MODE_GOOGLE = {
+    "Marche/running": "walking",
+    "Vélo/Trottinette/Autres": "bicycling",
+}
+
+
+def distance_routiere_km(adresse_domicile, mode_google):
+    """Distance routière réelle (km) entre le domicile et le bureau via
+    l'API Google Maps Distance Matrix. Retourne None si l'adresse ou
+    l'itinéraire n'est pas trouvé."""
+    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+    params = {
+        "origins": adresse_domicile,
+        "destinations": ADRESSE_BUREAU,
+        "mode": mode_google,
+        "units": "metric",
+        "key": GOOGLE_MAPS_API_KEY,
+    }
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=10)
+        response = requests.get(url, params=params, timeout=10)
         data = response.json()
-        if data:
-            return float(data[0]["lon"]), float(data[0]["lat"])
+        if data.get("status") != "OK":
+            print(f"Erreur API Google Maps : {data.get('status')}")
+            return None
+        element = data["rows"][0]["elements"][0]
+        if element.get("status") != "OK":
+            print(f"Itineraire introuvable ({element.get('status')}) pour : {adresse_domicile}")
+            return None
+        return round(element["distance"]["value"] / 1000, 2)
     except Exception as e:
-        print(f"Erreur geocodage : {e}")
-    return None, None
+        print(f"Erreur appel Google Maps : {e}")
+        return None
 
-def haversine(lon1, lat1, lon2, lat2):
-    R = 6371.0
-    p1 = math.radians(lat1)
-    p2 = math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
 
-print("=== VALIDATION DISTANCES DOMICILE/BUREAU ===\n")
+print("=== VALIDATION DISTANCES DOMICILE/BUREAU (API Google Maps) ===\n")
 
 with engine.begin() as conn:
     employes = conn.execute(text("""
@@ -64,28 +78,23 @@ with engine.begin() as conn:
         print("Declarations invalides : 0")
         print("Termine !")
     else:
-        time.sleep(1)
-        lon_bureau, lat_bureau = geocoder_adresse(ADRESSE_BUREAU)
-        print(f"Bureau geocode : lon={lon_bureau}, lat={lat_bureau}")
-
         nb_valide = 0
         nb_invalide = 0
         nb_echec = 0
 
         for emp in employes:
             id_salarie, nom, prenom, adresse, mode = emp
+            mode_google = MODE_GOOGLE[mode]
 
-            time.sleep(1)
-            lon_dom, lat_dom = geocoder_adresse(adresse)
-            if lon_dom is None:
-                print(f"Adresse non trouvee : {prenom} {nom}")
+            distance_km = distance_routiere_km(adresse, mode_google)
+            time.sleep(0.2)  # marge de securite face au quota de l'API
+
+            if distance_km is None:
+                print(f"Adresse ou itineraire non trouve : {prenom} {nom}")
                 nb_echec += 1
                 continue
 
-            distance_vol = haversine(lon_dom, lat_dom, lon_bureau, lat_bureau)
-            distance_km = round(distance_vol * COEF_ROUTIER, 2)
-
-            distance_max = DISTANCE_MAX.get(mode, 15)
+            distance_max = DISTANCE_MAX[mode]
             valide = distance_km <= distance_max
             motif = None if valide else f"{distance_km}km > {distance_max}km max pour {mode}"
 
@@ -117,5 +126,5 @@ with engine.begin() as conn:
         print(f"\n=== RESUME ===")
         print(f"Declarations valides : {nb_valide}")
         print(f"Declarations invalides : {nb_invalide}")
-        print(f"Adresses non geocodees : {nb_echec}")
+        print(f"Adresses/itineraires non trouves : {nb_echec}")
         print("Termine !")

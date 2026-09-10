@@ -1,7 +1,17 @@
+import os
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5435")
+DB_NAME = os.environ.get("DB_NAME", "avantages_sportifs")
 
 engine = create_engine(
-    "postgresql+pg8000://sds_admin:sportdata@localhost:5435/avantages_sportifs"
+    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 print("=== DEMO LIVE - Ajout d'une nouvelle activite ===\n")

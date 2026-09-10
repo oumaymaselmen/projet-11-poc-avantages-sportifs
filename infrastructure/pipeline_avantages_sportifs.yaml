@@ -9,12 +9,18 @@ tasks:
     type: io.kestra.plugin.scripts.shell.Commands
     taskRunner:
       type: io.kestra.plugin.core.runner.Process
+    env:
+      DB_HOST: sds_postgres
+      DB_PORT: "5432"
     commands:
       - cd /app/project && python generate_data.py
   - id: tests_qualite
     type: io.kestra.plugin.scripts.shell.Commands
     taskRunner:
       type: io.kestra.plugin.core.runner.Process
+    env:
+      DB_HOST: sds_postgres
+      DB_PORT: "5432"
     commands:
       - sleep 2 && cd /app/project && python tests_qualite.py
   - id: validation_distances
@@ -39,6 +45,9 @@ tasks:
     type: io.kestra.plugin.scripts.shell.Commands
     taskRunner:
       type: io.kestra.plugin.core.runner.Process
+    env:
+      DB_HOST: sds_postgres
+      DB_PORT: "5432"
     commands:
       - cd /app/project && python slack_notifications.py
 errors:

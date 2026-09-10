@@ -1,7 +1,19 @@
+import os
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+# Meme remarque que slack_notifications.py : sds_postgres:5432 par defaut
+# (reseau Docker interne, execution via Kestra a confirmer)
+DB_HOST = os.environ.get("DB_HOST", "sds_postgres")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "avantages_sportifs")
 
 engine = create_engine(
-    "postgresql+pg8000://sds_admin:sportdata@sds_postgres:5432/avantages_sportifs"
+    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 
@@ -36,8 +48,6 @@ with engine.connect() as conn:
 
     nb_duree = conn.execute(text("SELECT COUNT(*) FROM activites_sportives WHERE duree_s <= 0")).scalar()
     test("Durees toutes positives", nb_duree == 0, f"({nb_duree} anomalies)")
-
-    nb_dates = conn.execute(text("SELECT COUNT(*) FROM activites_sportives WHERE date_debut < NOW() - INTERVAL '14 months' OR date_debut > NOW()")).scalar()
 
     nb_sans_act = conn.execute(text("SELECT COUNT(*) FROM employes e WHERE NOT EXISTS (SELECT 1 FROM activites_sportives a WHERE a.id_salarie = e.id_salarie)")).scalar()
     test("Tous les salaries ont des activites", nb_sans_act == 0, f"({nb_sans_act} salaries sans activite)")

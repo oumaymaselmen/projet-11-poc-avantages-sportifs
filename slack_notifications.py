@@ -1,15 +1,23 @@
 import os
 import requests
 from sqlalchemy import create_engine, text
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+# Defaut sds_postgres:5432 = nom/port du conteneur sur le reseau Docker interne
+# (utilise quand ce script tourne dans une tache Kestra). Surcharger DB_HOST/DB_PORT
+# via .env si ce script est plutot lance manuellement depuis l'hote.
+DB_HOST = os.environ.get("DB_HOST", "sds_postgres")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "avantages_sportifs")
+
 engine = create_engine(
-    f"postgresql+pg8000://sds_admin:{os.getenv('POSTGRES_PASSWORD')}@sds_postgres:5432/avantages_sportifs"
+    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 def envoyer_message_slack(message):
