@@ -48,14 +48,32 @@ df["sport_pratique"] = df["sport_pratique"].where(pd.notna(df["sport_pratique"])
 print(f"{len(df)} salaries charges")
 
 with engine.begin() as conn:
-    conn.execute(text("TRUNCATE TABLE avantages_calcules, distances_domicile_bureau, activites_sportives, employes RESTART IDENTITY CASCADE"))
+    # IMPORTANT : on ne vide plus "employes" ni "activites_sportives" en bloc.
+    # Un TRUNCATE global effacerait aussi les activites inserees manuellement
+    # (source='manuel', ex. via demo_live.py pendant une demonstration live).
+    # Seules les tables entierement derivees (recalculees a chaque execution
+    # de toute facon) sont reinitialisees sans risque.
+    conn.execute(text("TRUNCATE TABLE avantages_calcules, distances_domicile_bureau RESTART IDENTITY"))
+
     for _, row in df.iterrows():
         conn.execute(text("""
             INSERT INTO employes (id_salarie, nom, prenom, date_naissance, bu, date_embauche,
                 salaire_brut, type_contrat, nb_jours_cp, adresse_domicile, moyen_deplacement, sport_pratique)
             VALUES (:id_salarie, :nom, :prenom, :date_naissance, :bu, :date_embauche,
                 :salaire_brut, :type_contrat, :nb_jours_cp, :adresse_domicile, :moyen_deplacement, :sport_pratique)
-            ON CONFLICT (id_salarie) DO NOTHING
+            ON CONFLICT (id_salarie) DO UPDATE SET
+                nom = EXCLUDED.nom,
+                prenom = EXCLUDED.prenom,
+                date_naissance = EXCLUDED.date_naissance,
+                bu = EXCLUDED.bu,
+                date_embauche = EXCLUDED.date_embauche,
+                salaire_brut = EXCLUDED.salaire_brut,
+                type_contrat = EXCLUDED.type_contrat,
+                nb_jours_cp = EXCLUDED.nb_jours_cp,
+                adresse_domicile = EXCLUDED.adresse_domicile,
+                moyen_deplacement = EXCLUDED.moyen_deplacement,
+                sport_pratique = EXCLUDED.sport_pratique,
+                updated_at = NOW()
         """), {
             "id_salarie": int(row["id_salarie"]),
             "nom": row["nom"], "prenom": row["prenom"],
@@ -69,7 +87,11 @@ with engine.begin() as conn:
             "sport_pratique": row["sport_pratique"] if pd.notna(row.get("sport_pratique")) else None
         })
 
-print(f"{len(df)} salaries inseres")
+    # On ne supprime que les activites generees par simulation - jamais celles
+    # ajoutees manuellement (demo_live.py aujourd'hui, Strava a terme)
+    conn.execute(text("DELETE FROM activites_sportives WHERE source = 'simulation'"))
+
+print(f"{len(df)} salaries inseres/mis a jour")
 
 SPORTS_AVEC_DISTANCE = {
     "Course a pied":  {"distance": (3000, 25000),  "vitesse_ms": (2.5, 4.5)},
@@ -129,5 +151,5 @@ with engine.begin() as conn:
         VALUES (:id_salarie, :date_debut, :date_fin, :type_sport, :distance_m, :duree_s, :commentaire, :source)
     """), activites)
 
-print(f"{len(activites)} activites inserees")
+print(f"{len(activites)} activites de simulation inserees")
 print("Termine !")
