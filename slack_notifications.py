@@ -37,13 +37,16 @@ def formater_distance(distance_m):
 print("=== NOTIFICATIONS SLACK - Activites sportives ===\n")
 
 with engine.connect() as conn:
-    # Recuperer les activites des derniers 12 mois
+    # Recuperer les activites les PLUS RECEMMENT INSEREES en base (created_at),
+    # et non plus un tirage aleatoire parmi les 12 derniers mois. Ca garantit
+    # qu'une activite tout juste ajoutee (ex. via demo_live.py) soit bien celle
+    # notifiee en priorite - important pour la demonstration en direct.
     activites = conn.execute(text("""
         SELECT a.id, e.prenom, e.nom, a.type_sport, a.distance_m, a.duree_s, a.commentaire
         FROM activites_sportives a
         JOIN employes e ON a.id_salarie = e.id_salarie
         WHERE a.date_debut >= NOW() - INTERVAL '12 months'
-        ORDER BY RANDOM()
+        ORDER BY a.created_at DESC
         LIMIT 5
     """)).fetchall()
 
