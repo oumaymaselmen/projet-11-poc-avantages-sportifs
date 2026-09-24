@@ -57,4 +57,6 @@ Creer un fichier `.env` a la racine du projet (voir `.env.example`) avec :
 
 Python - PostgreSQL - Docker - Kestra - SQLAlchemy - Power BI - API Google Maps - Slack API
 
+## Résultats
+    Pipeline en 5 étapes automatisé avec notifications Slack
 ---
